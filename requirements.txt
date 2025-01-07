@@ -1,0 +1,10 @@
+bittensor==8.5.1
+cryptography
+docker
+pandas
+huggingface-hub
+datasets
+diskcache
+pytest
+numpy
+requests
