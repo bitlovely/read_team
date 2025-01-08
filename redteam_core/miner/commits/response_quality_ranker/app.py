@@ -1,22 +1,19 @@
 from fastapi import FastAPI
-from model import ResponseQualityHandler
+from model import ResponseQualityHandler, MyModel
 from data_types import MinerInput, MinerOutput
+import json
 
 app = FastAPI()
-model = ResponseQualityHandler()
+model = MyModel()
 
 @app.post("/solve")
 async def solve(data: MinerInput):
-    payload = {
-        'inputs': [
-            {
-                "instruction": data.prompt,
-                "response": response
-            } for response in data.responses
-        ]
+    challenge = {
+        'prompt': data.prompt,
+        'responses': data.responses
     }
-     
-    response_quality = [x["response_quality"] for x in model(payload)]
+    challenge_message = json.dumps(challenge)
+    response_quality = model.generate(challenge_message)
     return MinerOutput(
         response_quality=response_quality
     )

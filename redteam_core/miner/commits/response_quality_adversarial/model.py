@@ -2,13 +2,13 @@ import os
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-MAX_MAX_NEW_TOKENS = 2048
+MAX_MAX_NEW_TOKENS = 3000
 DEFAULT_MAX_NEW_TOKENS = 1024
 MAX_INPUT_TOKEN_LENGTH = int(os.getenv("MAX_INPUT_TOKEN_LENGTH", "4096"))
 
 
 class MyModel():
-    def __init__(self, model_id = "unsloth/Llama-3.2-3B-Instruct") -> None:
+    def __init__(self, model_id = "Llama-3.2-3B-Instruct") -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -16,18 +16,30 @@ class MyModel():
             torch_dtype=torch.bfloat16,
         ).to(self.device)
         self.model.eval()
+        with open("questions.txt") as f:
+            self.questions = f.readlines()
 
     def generate(
         self,
         message: str,
         chat_history: list[tuple[str, str]] = [],
-        max_new_tokens: int = 10,
-        temperature: float = 0.6,
-        top_p: float = 0.9,
+        max_new_tokens: int = 3000,
+        temperature: float = 0.8,
+        top_p: float = 0.75,
         top_k: int = 50,
-        repetition_penalty: float = 1.2,
+        repetition_penalty: float = 1,
     ):
         conversation = []
+        message = f"""
+        You are an expert in various domains, and your goal is to provide detailed, accurate, and well-supported answers to questions. 
+        When responding to queries, please follow these guidelines:
+        1. Provide fact-based answers, drawing on reliable sources and logical reasoning.
+        2. Present your response clearly and concisely, ensuring the user can easily understand.
+        3. Focus on practical, actionable insights, offering valuable advice wherever applicable.
+        4. Avoid uncertainty or ambiguity—answer with confidence and precision.
+        
+        Query: {message}
+        """
         for user, assistant in chat_history:
             conversation.extend(
                 [
@@ -35,7 +47,7 @@ class MyModel():
                     {"role": "assistant", "content": assistant},
                 ]
             )
-        conversation.append({"role": "user", "content": message})
+        conversation.append({"role": "system", "content": message})
 
         input_ids = self.tokenizer.apply_chat_template(conversation, add_generation_prompt=True, return_tensors="pt")
         if input_ids.shape[1] > MAX_INPUT_TOKEN_LENGTH:
